@@ -1,42 +1,42 @@
-// 28 de novembro de 2024
+// November 28, 2024
 
-/* Firmware 3DCameleon Mk4.1 >camaleão turbo 8x
+/* 3DChameleon Mk4.1 Firmware >camaleão turbo 8x
 
 Copyright 2024 William J. Steele
 
 
 Edited and modified by IGOR Henrique Darin
 
-A permissão é concedida, gratuitamente, a qualquer pessoa que obtenha uma cópia deste software e arquivos de documentação
-associados (o “Software”), para lidar com o Software sem restrições, incluindo, sem limitação,
-os direitos de usar, copiar, modificar, mesclar, publicar, distribuir, sublicenciar e/ou vender cópias do Software,
-e permitir que as pessoas a quem o Software é fornecido o façam, sujeito às seguintes condições:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated 
+documentation files (the “Software”), to deal in the Software without restriction, including, without limitation, 
+the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
+and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
-O aviso de direitos autorais acima e este aviso de permissão devem ser incluídos em todas as cópias ou partes substanciais
-do Software.
+The above copyright notice and this permission notice shall be included in all copies or substantial portions 
+of the Software.
 
-O SOFTWARE É FORNECIDO "NO ESTADO EM QUE SE ENCONTRA", SEM GARANTIA DE QUALQUER TIPO, EXPRESSA OU IMPLÍCITA, INCLUINDO, MAS NÃO SE LIMITANDO
-ÀS GARANTIAS DE COMERCIALIZAÇÃO, ADEQUAÇÃO A UM DETERMINADO FIM E NÃO VIOLAÇÃO. NO CASO,
-OS AUTORES OU TITULARES DOS DIREITOS AUTORAIS SERÃO RESPONSÁVEIS POR QUALQUER REIVINDICAÇÃO, DANOS OU OUTRA RESPONSABILIDADE, SEJA EM UMA AÇÃO DE
-CONTRATO, ATO ILÍCITO OU DE OUTRA FORMA, DECORRENTE DE, DE OU EM CONEXÃO COM O SOFTWARE OU O USO OU OUTRAS
-NEGAÇÕES NO SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED 
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF 
+CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
 
-Comandos de Pressionamento de Botão Único (contagem de pulsos do seletor)
+Single Button Press Commands (Selector Pulse Count)
 
-    1: "Extrusora T0",
-    2: "Extrusora T1",
-    3: "Extrusora T2",
-    4: "Extrusora T3",
-    5: "Extrusora T4",
-    6: "Extrusora T5",
-    7: "Extrusora T6",
-    8: "Extrusora T7",
-    9: "Carregar/Inicio T0",
-    10: "Descarregar/Inicio",
-    11: "Inicio",
-    12: "Próximo",
-    13: "Aleatório",
-    14: "Pulso Extra"
+    1: "Extruder T0",
+    2: "Extruder T1",
+    3: "Extruder T2",
+    4: "Extruder T3",
+    5: "Extruder T4",
+    6: "Extruder T5",
+    7: "Extruder T6",
+    8: "Extruder T7",
+    9: "Load/Home T0",
+    10: "Unload/Home",
+    11: "Home",
+    12: "Next",
+    13: "Random",
+    14: "Extra Pulse"
  
 */
 
@@ -59,13 +59,13 @@ Comandos de Pressionamento de Botão Único (contagem de pulsos do seletor)
 #pragma once
 
 
-// Declaração para um display SSD1306 conectado a I2C (pinos SDA, SCL)
-#define OLED_RESET  -1 // Pino de reinicialização # (ou -1 se estiver compartilhando o pino de reinicialização do Arduino)
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+#define OLED_RESET  -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define OLED_I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
 
-// define a expansão sparkfun io
-const byte SX1509_ADDRESS = 0x3E; // Endereço I2C SX1509
+// Define the sparkfun io expansion setup
+const byte SX1509_ADDRESS = 0x3E; // SX1509 I2C Address
 #define SX1509_FILAMENT_0 0
 #define SX1509_FILAMENT_1 1
 #define SX1509_FILAMENT_2 2
@@ -78,19 +78,19 @@ const byte SX1509_ADDRESS = 0x3E; // Endereço I2C SX1509
 SX1509 io;                        // Create an SX1509 object to be used throughout
 
 
-//Os primeiros três (extEnable, extEtep, extDir) são para o motor do extrusor.
+// The first three (extEnable, extStep, extDir) are for the extruder motor.
 #define extEnable 8
 #define extStep 2
 #define extDir 5
-//Os outros três (ext2Enable, ext2Etep, ext2Dir) são para o motor do segundo extrusor.
+// The other three (ext2Enable, ext2Step, ext2Dir) are for the second extruder motor.
 #define ext2Enable 8
 #define ext2Step 4
 #define ext2Dir 7
-//Os próximos três (selEnable, selStep, selDir) são para o motor do seletor de filamento.
+// The next three (selEnable, selStep, selDir) are for the filament selector motor.
 #define selEnable 8
 #define selStep 3
 #define selDir 6
-//Os últimos três (trigger, s_limit, filament) são sensores para monitorar o estado do filamento.
+// The last three (trigger, s_limit, filament) are sensors to monitor the filament state.
 #define trigger A3
 #define s_limit A4
 #define filament A5
@@ -100,8 +100,8 @@ const int stepsPerRev = 200;
 const int microSteps = 16;
 const int speedDelay = 100;
 const int defaultBackoff = 10;
-Servo filamentCutter;  // cria objeto servo para controlar um servo
-int cutterPos = 0;    // variável para armazenar a posição do servo
+Servo filamentCutter;  // Creates servo object to control a servo
+int cutterPos = 0;    // Variable to store the servo position
 bool reverseServo = true;
 int currentExtruder = -1;
 int nextExtruder = 0;
@@ -109,12 +109,12 @@ int lastExtruder = -1;
 int tempExtruder = -1;
 int seenCommand = 0;
 int prevCommand = 0;
-int loaderMode = 2;  //(0= acionamento direto, 1=carregador/descarregador, 2=carregador/descarregador com prensa cortar o filamento)
+int loaderMode = 2;  // (0 = direct drive, 1 = loader/unloader, 2 = loader/unloader with press to cut filament)
 long triggerTime = 300;
 long pulseTime = (triggerTime / 2);
 long distance = 10;
-long unloadDistance = stepsPerRev * microSteps * distance;  // isto é 10 rotações - cerca de 10"
-long loadDistance   = unloadDistance * 1.1;           // isto é 11 rotações - cerca de 11"
+long unloadDistance = stepsPerRev * microSteps * distance;  // This is 10 rotations - about 10"
+long loadDistance   = unloadDistance * 1.1;           // This is 11 rotations - about 11"
 int address = 0;
 byte value;
 long idleCount = 0;
@@ -134,44 +134,44 @@ long randomNumber = 0;
 
 void setup()
 {
-  Wire.begin(); // Inicia o I2C
-  Wire.setClock(400000L); // Define clock do I2C
+  Wire.begin(); // Initializes I2C
+  Wire.setClock(400000L); // Sets I2C clock speed
 
-  // Inicializa o expansor IO
+  // Initializes the IO expander
   if (io.begin(SX1509_ADDRESS) == true)
   {
-    // Configura os 8 pinos de sensores como entrada com pull-up
+    // Configures the 8 sensor pins as input with internal pull-up resistors
     for (int i = SX1509_FILAMENT_0; i <= SX1509_FILAMENT_7; i++) {
       io.pinMode(i, INPUT_PULLUP);
     }
 
-    // Configura o pino de saída como OUTPUT
+    // Configures the output pin as OUTPUT
     io.pinMode(SX1509_OUTPUT, OUTPUT);
 
     ioEnabled = true;
   }
-  // enable OLED display
+  // Enable OLED display
   oled.begin(&Adafruit128x64, OLED_I2C_ADDRESS);
 
-  // wait for it to start up
+  // Wait for it to start up
   delay(50);
 
-  // welcome screen
+  // Welcome screen
   oled.setFont(Adafruit5x7);
-  oled.clear(); //clear display
-	oled.println("");
-  oled.println("       Bem vindo"); //print a welcome message  
+  oled.clear(); // Clear display
   oled.println("");
-  oled.println("   Camaleao Turbo  "); //print a welcome message
+  oled.println("       Welcome"); // Print a welcome message  
+  oled.println("");
+  oled.println("   Camaleao Turbo  "); // Print a welcome message
   oled.println("");
   oled.println("         8x ");
   delay(3000);
 
-  displayText(0, "       Pronto!");
+  displayText(0, "       Ready!");
   
   seenCommand = 0;
 
-    // Os 3 pino de saida:
+  // The 3 output pin sets:
   pinMode(extEnable, OUTPUT);
   pinMode(extStep, OUTPUT);
   pinMode(extDir, OUTPUT);
@@ -184,17 +184,17 @@ void setup()
   pinMode(selStep, OUTPUT);
   pinMode(selDir, OUTPUT);
 
-  // set up the button
-  pinMode(trigger, INPUT_PULLUP);  // selector
+  // Set up the button
+  pinMode(trigger, INPUT_PULLUP);  // Selector
 
-  // a little override here... we're using the two inputs as I2C instead
+  // A little override here... we're using the two inputs as I2C instead
   pinMode(s_limit, OUTPUT);    
   pinMode(filament, OUTPUT); 
 
-  // lock the selector by energizing it
+  // Lock the selector by energizing it
   digitalWrite(selEnable, HIGH);
 
-  // make sure filament isn't blocked by gillotine
+  // Make sure filament isn't blocked by guillotine
   connectGillotine();
   cutFilament();
   disconnectGillotine();
@@ -212,7 +212,7 @@ void loop()
   seenCommand = 0;
   idleCount++;
 
-  // process button press
+  // Process button press
   if (digitalRead(trigger) == 0)
   {
     idleCount = 0;
@@ -221,7 +221,7 @@ void loop()
     unsigned long pulseCount = 0;
     unsigned long commandCount = 0;
 
-    // keep counting (and pulsing) until button is released
+    // Keep counting (and pulsing) until button is released
     while (digitalRead(trigger) == 0)
     {
       if(pulseCount<pulseTime)
@@ -230,20 +230,20 @@ void loop()
         displayCommand(pulseCount);
         if(pulseCount>1) vibrateMotor();
       }
-      delay(400);  // each pulse is 400+ milliseconds apart 
+      delay(400);  // Each pulse is 400+ milliseconds apart 
     }
-    processCommand(pulseCount); // ok... execute whatever command was caught (by pulse count)
+    processCommand(pulseCount); // OK... execute whatever command was caught (by pulse count)
     pulseCount = 0;
   }
 
-  // atualiza o bloco IO, duh! Não, sério, pega o estado da expansão gpio sparkfun
+  // Updates the IO block, duh! No, seriously, fetches the state of the SparkFun GPIO expander
   updateIOBlock();
 
-  // cada loop adiciona um atraso de 50 ms, que é adicionado DEPOIS que o comando é processado antes que o próximo possa começar
+  // Each loop adds a 50 ms delay, which is added AFTER the command is processed before the next one can begin
   delay(50);
 }
 
-// read the sparkfun SX1509 io
+// Read the SparkFun SX1509 IO expander data
 void updateIOBlock() {
   if(ioEnabled) {
     T0Loaded = io.digitalRead(SX1509_FILAMENT_0);
@@ -259,122 +259,122 @@ void updateIOBlock() {
 
 
 
-// exibição do display conforme os pulsos
+// Handles UI screen layout feedback corresponding to pulse ticks
 void displayCommand(long commandCount)
 {
   switch(commandCount)
   {
     case 2:
-      displayText(25, "     Extrusora T0");
+      displayText(25, "     Extruder T0");
       break;
     case 3:
-      displayText(25, "     Extrusora T1");
+      displayText(25, "     Extruder T1");
       break;
     case 4:
-      displayText(25, "     Extrusora T2");
+      displayText(25, "     Extruder T2");
       break;
     case 5:
-      displayText(25, "     Extrusora T3");
+      displayText(25, "     Extruder T3");
       break;
     case 6:
-      displayText(25, "     Extrusora T4");
+      displayText(25, "     Extruder T4");
       break;
     case 7:
-      displayText(25, "     Extrusora T5");
+      displayText(25, "     Extruder T5");
       break;
     case 8:
-      displayText(25, "     Extrusora T6");
+      displayText(25, "     Extruder T6");
       break;
     case 9:
-      displayText(25, "     Extrusora T7");
+      displayText(25, "     Extruder T7");
       break;
     case 10:
-      displayText(25, "  Carregar/Inicio T0");
+      displayText(25, "    Load/Home T0");
       break;
     case 11:
-      displayText(28, "  Descarregar/Inicio");
+      displayText(28, "   Unload/Home");
       break;
     case 12:
-      displayText(50, "      Inicio");
+      displayText(50, "       Home");
       break;  
     case 13:
-      displayText(50, "      Proximo");
+      displayText(50, "       Next");
       break;
     case 14:
-      displayText(40, "     Aleatorio");
+      displayText(40, "      Random");
       break;
     default:
-      displayText(30, "     Sem comando");
+      displayText(30, "    No Command");
       break;
   }
 }
 
 
-// execute o comando de contagem de pulsos
+// Execute the specific pulse count command
 void processCommand(long commandCount)
 {
   switch (commandCount)
   {
-  case 2: // Extrusora T0
-    displayText(30, "    T0 Selecionada");
+  case 2: // Extruder T0
+    displayText(30, "    T0 Selected");
     currentExtruder = 0;
     processMoves();
     displayText(35, "      Idle - T0");
     break;
 
-  case 3: // Extrusora T1
-    displayText(30, "    T1 Selecionada");
+  case 3: // Extruder T1
+    displayText(30, "    T1 Selected");
     currentExtruder = 1;
     processMoves();
     displayText(35, "      Idle - T1");
     break;
 
-  case 4: // Extrusora T2
-    displayText(30, "    T2 Selecionada");
+  case 4: // Extruder T2
+    displayText(30, "    T2 Selected");
     currentExtruder = 2;
     processMoves();
     displayText(35, "      Idle - T2");
     break;
 
-  case 5: // Extrusora T3
-    displayText(30, "    T3 Selecionada");
+  case 5: // Extruder T3
+    displayText(30, "    T3 Selected");
     currentExtruder = 3;
     processMoves();
     displayText(35, "      Idle - T3");
     break;
 
   case 6: // Extrusora T4
-    displayText(30, "    T4 Selecionada");
+    displayText(30, "    T4 Selected");
     currentExtruder = 4;
     processMoves();
     displayText(35, "      Idle - T4");
     break;
 
-  case 7: // Extrusora T5
-    displayText(30, "    T5 Selecionada");
+  case 7: // Extruder T5
+    displayText(30, "    T5 Selected");
     currentExtruder = 5;
     processMoves();
     displayText(35, "      Idle - T5");
     break;
 
-  case 8: // Extrusora T6
-    displayText(30, "    T6 Selecionada");
+  case 8: // Extruder T6
+    displayText(30, "    T6 Selected");
     currentExtruder = 6;
     processMoves();
     displayText(35, "      Idle - T6");
     break;
 
-  case 9: // Extrusora T7
-    displayText(30, "    T7 Selecionada");
+  case 9: // Extruder T7
+    displayText(30, "    T7 Selected");
     currentExtruder = 7;
     processMoves();
     displayText(35, "      Idle - T7");
     break;
 
-  case 10: // Carregar/Inicio T0
-    displayText(40, "  Retornando...");
+  case 10: // Load/Home T0
+    displayText(40, "   Homing...");
     homeSelector();
-    displayText(15, "  Press.Carregar T0");
+    displayText(15, "   Press.Load T0");
     gotoExtruder(0, 0);
     if(loaderMode > 0) rotateExtruder(clockwise, loadDistance);
     if(loaderMode > 0) gotoExtruder(0, 1);
@@ -383,35 +383,35 @@ void processCommand(long commandCount)
     displayText(35, "      Idle - T0");
     break;
 
-  case 11: // Descarregar/Inicio
-    displayText(30, "   Cortando...");
+  case 11: // Unload/Home
+    displayText(30, "    Cutting...");
     connectGillotine();
     cutFilament();
     switch(lastExtruder)
     {
       case 0:
-        displayText(10, " Press.Descarregar T0");
+        displayText(10, "  Press.Unload T0");
         break;
       case 1:
-        displayText(10, " Press.Descarregar T1");
+        displayText(10, "  Press.Unload T1");
         break;
       case 2:
-        displayText(10, " Press.Descarregar T2");
+        displayText(10, "  Press.Unload T2");
         break;
       case 3:
-        displayText(10, " Press.Descarregar T3");
+        displayText(10, "  Press.Unload T3");
         break;
       case 4:
-        displayText(10, " Press.Descarregar T4");
+        displayText(10, "  Press.Unload T4");
         break;
       case 5:
-        displayText(10, " Press.Descarregar T5");
+        displayText(10, "  Press.Unload T5");
         break;
       case 6:
-        displayText(10, " Press.Descarregar T6");
+        displayText(10, "  Press.Unload T6");
         break;
       case 7:
-        displayText(10, " Press.Descarregar T7");
+        displayText(10, "  Press.Unload T7");
         break;
     }
     if(loaderMode > 0) gotoExtruder((lastExtruder == 7 ? 6 : lastExtruder + 1), lastExtruder);
@@ -427,30 +427,30 @@ void processCommand(long commandCount)
     displayText(50, "        Idle");
     break;
 
-  case 12: // Inicio
-    displayText(40, "  Retornando...");
+  case 12: // Home
+    displayText(40, "   Homing...");
     homeSelector();
-    displayText(50, "      Inicio");
+    displayText(50, "       Home");
     break;
 
-  case 13: // Proximo
-    displayText(30, "   Cortando...");
+  case 13: // Next
+    displayText(30, "    Cutting...");
     connectGillotine();
     cutFilament();
-    displayText(30, "Prox.Ferramenta");
+    displayText(30, " Next Tool");
     currentExtruder++;
     if(currentExtruder == 8) currentExtruder = 0;
     processMoves();
-    displayText(50, "      Proximo");
+    displayText(50, "       Next");
     break;
 
-  case 14: // Aleatorio
-    displayText(30, "   Cortando...");
+  case 14: // Random
+    displayText(30, "    Cutting...");
     connectGillotine();
     cutFilament();
-    displayText(30, "  Aleatorio");
+    displayText(30, "   Random");
 
-    randomNumber = random(0, 8) + 1; // 1 a 4
+    randomNumber = random(0, 8) + 1; // 1 to 8
 
     for(long i = 0; i < randomNumber; i++)
     {
@@ -458,7 +458,7 @@ void processCommand(long commandCount)
       if(currentExtruder == 8) currentExtruder = 0;
     }
     processMoves();
-    displayText(50, "     Aleatorio");
+    displayText(50, "      Random");
     break;
 
   default:
@@ -470,12 +470,12 @@ void processCommand(long commandCount)
 }
 
 
-// apenas a rotina para atualizar o OLED
+// Main task function to write updating information out to the OLED screen
 void displayText(int offset, String str)
 {
   oled.clear();
   oled.println("");
-  oled.println("   Camaleao Turbo  "); // imprime uma mensagem de boas-vindas
+  oled.println("   Camaleao Turbo  "); // Prints a welcome message
   
   oled.println("");
   oled.println("");
@@ -505,47 +505,47 @@ void displayText(int offset, String str)
 }
 
 
-// o trabalho de verdade está aqui
+// Real mechanical task processing sequences reside here
 void processMoves()
 {
-  // certifique-se de que temos uma extrusora real selecionada
+  // Make sure we have a real extruder selected
   if(lastExtruder > -1)
   {
-    // se sim, precisamos cortar o filamento
-    displayText(30, "   Cortando...");
+    // If yes, we need to cut the filament
+    displayText(30, "    Cutting...");
     connectGillotine();
     cutFilament();
-    // ok... então espere o 2º botão ser pressionado para descarregá-lo
+    // OK... then wait for the 2nd button execution sequence to unload it
     switch(lastExtruder)
     {
       case 0:
-        displayText(10, "Press.Descarregar T0");
+        displayText(10, " Press.Unload T0");
         break;
       case 1:
-        displayText(10, "Press.Descarregar T1");
+        displayText(10, " Press.Unload T1");
         break;
       case 2:
-        displayText(10, "Press.Descarregar T2");
+        displayText(10, " Press.Unload T2");
         break;
       case 3:
-        displayText(10, "Press.Descarregar T3");
+        displayText(10, " Press.Unload T3");
         break;
       case 4:
-        displayText(10, "Press.Descarregar T4");
+        displayText(10, " Press.Unload T4");
         break;
       case 5:
-        displayText(10, "Press.Descarregar T5");
+        displayText(10, " Press.Unload T5");
         break;
       case 6:
-        displayText(10, "Press.Descarregar T6");
+        displayText(10, " Press.Unload T6");
         break;
       case 7:
-        displayText(10, "Press.Descarregar T7");
+        displayText(10, " Press.Unload T7");
         break;
     } 
-    // rolar para o primeiro se estiver no último
+    // Roll over to the first if we're on the last index position
     if(loaderMode > 0) gotoExtruder((lastExtruder == 7 ? 6 : (lastExtruder + 1)), lastExtruder);
-    // isso determina em qual direção mover o motor, 0-1-4-5: sentido anti-horário, 2-3-6-7: sentido horário
+    // This determines which direction to run the motor, 0-1-4-5: counterclockwise, 2-3-6-7: clockwise
     if(lastExtruder == 0 || lastExtruder == 1 || lastExtruder == 4 || lastExtruder == 5)
     {
       if(loaderMode > 0)
@@ -569,35 +569,35 @@ void processMoves()
   }
   disconnectGillotine();
   gotoExtruder(lastExtruder, currentExtruder);
-  // ok... filamento descarregado, hora de carregar o novo... então diga ao usuário
+  // OK... filament unloaded, time to load the new one... inform the user
   switch(currentExtruder)
   {
     case 0:
-      displayText(15, "  Press.Carregar T0");
+      displayText(15, "   Press.Load T0");
       break;
     case 1:
-      displayText(15, "  Press.Carregar T1");
+      displayText(15, "   Press.Load T1");
       break;
     case 2:
-      displayText(15, "  Press.Carregar T2");
+      displayText(15, "   Press.Load T2");
       break;
     case 3:
-      displayText(15, "  Press.Carregar T3");
+      displayText(15, "   Press.Load T3");
       break;
     case 4:
-      displayText(15, "  Press.Carregar T4");
+      displayText(15, "   Press.Load T4");
       break;
     case 5:
-      displayText(15, "  Press.Carregar T5");
+      displayText(15, "   Press.Load T5");
       break;
     case 6:
-      displayText(15, "  Press.Carregar T6");
+      displayText(15, "   Press.Load T6");
       break;
     case 7:
-      displayText(15, "  Press.Carregar T7");
+      displayText(15, "   Press.Load T7");
       break;
   }
-  // mesma lógica (mas invertida) para a direção do motor
+  // Same logic (but inverted) for the motor direction parameters
   if(currentExtruder == 0 || currentExtruder == 1 || currentExtruder == 4 || currentExtruder == 5)
   {
     if(loaderMode > 0)
@@ -614,34 +614,34 @@ void processMoves()
       else rotateExtruder2(counterclockwise, loadDistance);                   // Motor 2
     }
   }
-  // se estamos carregando, então carregue agora
+  // If we are configuring loading paths, cycle alignment loops now
   if(loaderMode > 0) gotoExtruder(currentExtruder, (currentExtruder == 7 ? 6 : (currentExtruder + 1)));
-  // todos se lembram onde estacionamos!
+  // Everyone remembers where we parked!
   lastExtruder = currentExtruder;
 }
 
-// esta função simplesmente move do currentCog para o targetCog é a melhor maneira
+// This function calculates displacement mapping between currentCog and targetCog positions cleanly
 void gotoExtruder(int currentCog, int targetCog)
 {
-  // extrator lógico da posição no seletor (0 a 3)
+  // Extract physical indexed position mapping coordinates within the selector structure (0 to 3)
   int currentPos = currentCog % 4;
   int targetPos = targetCog % 4;
 
   int newCog = targetPos - currentPos;
 
-  // direção padrão
+  // Set default rotation orientation parameters
   int newDirection = counterclockwise;
 
   if(newCog < 0)
   {
     newDirection = clockwise;
-    newCog = -newCog;  // inverter o sinal
+    newCog = -newCog;  // Invert sign value metrics
   }
 
-  // se já estamos na posição certa, não mova o seletor
+  // If we are already resting on the correct tracking paths, bypass selector activations
   if(newCog > 0)
   {    
-    // mover seletor para a nova posição
+    // Increment selector tracking step increments over to the new layout
     for(int i = 0; i < newCog; i++)
     {
       rotateSelector(newDirection, (stepsPerRev / 4) * microSteps);
@@ -650,12 +650,12 @@ void gotoExtruder(int currentCog, int targetCog)
 }
 
 
-// mova o motor da extrusora em uma direção específica por uma distância específica (a menos que seja um "até que o botão não seja pressionado")
+// Move the extruder motor in a specific direction for a specific distance (unless interrupted by manual line release actions)
 void rotateExtruder(bool direction, long moveDistance)
 {
-  digitalWrite(extEnable, LOW);  // travar o motor
-  digitalWrite(extDir, direction); // Permite que o motor se mova em uma direção específica
-  const int fastSpeed = speedDelay/2; // tempo duplo
+  digitalWrite(extEnable, LOW);  // Lock motor holding torque
+  digitalWrite(extDir, direction); // Configure travel orientation vectors
+  const int fastSpeed = speedDelay/2; // Double time calculation execution adjustments
   if(loaderMode==1)
   {
     for (long x = 0; x < (moveDistance-1); x++)
@@ -685,9 +685,9 @@ void rotateExtruder(bool direction, long moveDistance)
 
 void rotateExtruder2(bool direction, long moveDistance)
 {
-  digitalWrite(ext2Enable, LOW);  // travar o motor 2
-  digitalWrite(ext2Dir, direction); // definir direção motor 2
-  const int fastSpeed = speedDelay/2; // tempo duplo
+  digitalWrite(ext2Enable, LOW);  // Lock secondary motor holding torque
+  digitalWrite(ext2Dir, direction); // Define travel orientation vectors for motor 2
+  const int fastSpeed = speedDelay/2; // Double time calculation execution adjustments
   if(loaderMode==1)
   {
     for (long x = 0; x < (moveDistance-1); x++)
@@ -712,20 +712,19 @@ void rotateExtruder2(bool direction, long moveDistance)
       delayMicroseconds(fastSpeed);
     }
   }
-  digitalWrite(ext2Enable, HIGH);  // desenergizar motor 2
+  digitalWrite(ext2Enable, HIGH);  // De-energize secondary motor driver stages
 }
 
 
-// semelhante à extrusora, mas apenas avançando 50 (de 200) por vez
+// Similar to the extruder processing sequences, but traveling exactly 50 pulse increments (from a 200 base) at a time
 void rotateSelector(bool direction, int moveDistance)
 {
-
-  // já que estamos nisso... podemos tornar isso mais rápido usando a mágica que você inventou acima?
+  // While we are optimizing... can we maximize velocity bounds using your magic calculations outlined above?
   
-  digitalWrite(selEnable, LOW); // bloquear o seletor
-  digitalWrite(selDir, direction); // Permite que o motor se mova em uma direção específica
+  digitalWrite(selEnable, LOW); // Engage selector holding current
+  digitalWrite(selDir, direction); // Configure tracking path orientation parameters
 
-    // Faz 50 pulsos para fazer uma rotação de ciclo completo
+    // Executes exactly 50 pulses to perform a full lifecycle structural rotation
     for (int x = 0; x < (moveDistance-1); x++)
     {
       digitalWrite(selStep, HIGH);
@@ -735,9 +734,9 @@ void rotateSelector(bool direction, int moveDistance)
     }
 }
 
-// isso alterna o servo entre duas posições
+// This alternates the servo arm mechanism path layout cleanly between two predefined boundaries
 void cutFilament() {
-  digitalWrite(selEnable, LOW); // desabilita o stepper para que tenhamos energia!
+  digitalWrite(selEnable, LOW); // Kill structural stepper current constraints so full line load energy matches servo draws!
   if(reverseServo==false)
   {
     openGillotine();
@@ -751,47 +750,46 @@ void cutFilament() {
   digitalWrite(selEnable, HIGH);
 }
 
-// habilita o servo
+// Pinout assignment attachments
 void connectGillotine()
 {
   filamentCutter.attach(11);
 }
 
-// desabilita o servo - para que ele não vibre quando não estiver em uso
+// Disengage servo signal configurations to completely suppress mechanical buzz states during downtime
 void disconnectGillotine()
 {
   filamentCutter.detach();
 }
 
-// ciclo servo de 135 e 180
+// Executes rotational bounds translation cycles spanning between 135 and 180 degrees
 void openGillotine()
 {
-    for (int pos = 135; pos <= 180; pos += 1) { // vai de 0 graus a 180 graus
-    // em passos de 1 grau
-    filamentCutter.write(pos);              // diz ao servo para ir para a posição na variável 'pos'
-    delayMicroseconds(25000);                       // espera 15ms para o servo atingir a posição
+    for (int pos = 135; pos <= 180; pos += 1) { // Moves from 135 degrees out to 180 degrees
+    // Increments inside 1 degree tracking steps
+    filamentCutter.write(pos);              // Directs servo path updates toward specific index mappings
+    delayMicroseconds(25000);                       // Halts loop timing profiles allowing mechanical settling
   }
-  //filamentCutter.write(3.5);       // diz ao servo para ir para a posição na variável 'pos'
-  delay(50);                       // espera 15ms para o servo atingir a posição
+  delay(50);                       
 }
 
-// reverse cycle servo from 180 back to 135
+// Executes inverted translation loop maps tracking from 180 indexes back into 135 boundary marks
 void closeGillotine()
 {
-  for (int pos = 180; pos >= 135; pos -= 1) { // vai de 180 graus a 0 graus
-    filamentCutter.write(pos);              // diz ao servo para ir para a posição na variável 'pos'
-    delayMicroseconds(25000);                       // espera 15ms para o servo atingir a posição
+  for (int pos = 180; pos >= 135; pos -= 1) { // Inverts from 180 degrees down into 135 degrees
+    filamentCutter.write(pos);              
+    delayMicroseconds(25000);                       
   }
-  delay(50);                       // espera 15ms para o servo atingir a posição
+  delay(50);                       
 }
 
-// gire o seletor no sentido horário muito longe de 4, então ele irá ranger no batente
+// Drives physical selector alignment directly past terminal boundaries to ensure a unified physical reference point
 void homeSelector()
 {
-  // gire no sentido anti-horário até parar bruscamente
+  // Drive tracking clockwise into terminal mechanical constraint walls
   rotateSelector(clockwise, stepsPerRev * microSteps);
 
-  // mova apenas ligeiramente para a extrusora 1 (isso recua um pouco da parada brusca)
+  // Translate minutely back toward Extruder 1 settings to drop line pressure stresses off the frame limits
   rotateSelector(counterclockwise, defaultBackoff * microSteps);
 
  currentExtruder = 0;
@@ -799,11 +797,10 @@ void homeSelector()
 
 }
 
-// buzz buzz buzz
+// Generates quick feedback oscillations
 void vibrateMotor()
 {
-  // oscila o seletor 1 vez
+  // Oscillation pulse shift trace count = 1
   rotateSelector(clockwise, 2 * 16);
   rotateSelector(!clockwise, 2 * 16);
 }
-
