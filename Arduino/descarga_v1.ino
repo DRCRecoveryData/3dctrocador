@@ -1,24 +1,24 @@
 #include <Servo.h>
 
-Servo meuServo;
-const int pinoServo = 3;
-const int pinoSensor = 2;
+Servo myServo;
+const int servoPin = 3;
+const int sensorPin = 2;
 
 void setup() {
-  pinMode(pinoSensor, INPUT_PULLUP);
-  meuServo.attach(pinoServo);
-  meuServo.write(63); // Começa fechado
+  pinMode(sensorPin, INPUT_PULLUP);
+  myServo.attach(servoPin);
+  myServo.write(63); // Starts closed
 }
 
 void loop() {
-  int estado = digitalRead(pinoSensor);
+  int state = digitalRead(sensorPin);
 
-  if (estado == LOW) {
-    // 24V ligado → ABRE a alavanca
-    meuServo.write(0);
+  if (state == LOW) {
+    // 24V active → OPENS the lever
+    myServo.write(0);
   } else {
-    // 24V desligado → FECHA a alavanca
-    meuServo.write(63);
+    // 24V inactive → CLOSES the lever
+    myServo.write(63);
   }
 
   delay(100);
