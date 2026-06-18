@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Cria a pasta 3DC se não existir
+# Create the 3DC folder if it doesn't exist
 mkdir -p /usr/data/printer_data/config/3DC
 
-# Copia o arquivo principal da macro para a pasta correta
+# Copy the main macro file to the correct folder
 cp troca_cor.cfg /usr/data/printer_data/config/3DC/troca_cor.cfg
 
-# Define permissões para garantir execução
+# Set permissions to ensure proper execution
 chmod 644 /usr/data/printer_data/config/3DC/troca_cor.cfg
