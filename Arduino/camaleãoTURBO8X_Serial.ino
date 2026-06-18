@@ -1,146 +1,147 @@
 /* * 3DChameleon Turbo 8x - Arduino Uno + CNC Shield
- * Adaptado para 8 Cores (Dual Extruder) - Jan/2026
+ * Adapted for 8 Colors (Dual Extruder) - Jan/2026
  * -----------------------------------------------------------
- * COMANDOS SERIAL (Enviados via Klipper/Terminal):
- * * [ SELEÇÃO ]
- * T0 - T7         : Seleciona ferramenta e move seletor físico.
- * HOME            : Calibra seletor no batente físico (Canal 0).
- * IDLE            : Estaciona seletor entre ressaltos (alivia fio).
- * * [ MOVIMENTAÇÃO ]
- * LOAD <mm>       : Carrega até o sensor do bico.
- * LOAD <mm> EX <n>: Carrega até o sensor + <n> mm extras.
- * UNLOAD <mm>     : Recua o filamento na distância definida.
- * STOP_LOAD       : Interrupção imediata do motor de carga.
- * * [ CALIBRAÇÃO E TESTE ]
- * PRESSURE <val>  : Offset do seletor (+/- steps) para ajuste de mola.
- * SPEED <val>     : Velocidade extrusão (Menor = Mais rápido).
- * STRESS          : Ciclo automático de todas as combinações (T0-T7).
- * STATUS          : Diagnóstico de sensores, ferramenta e offsets.
- * * [ AUTOMAÇÃO DO BUFFER ]
- * BUFFER_ON/OFF   : Ativa/Desativa recarga automática (Piloto Automático).
- * PROTECAO_ON/OFF : Ativa/Desativa pausa por filamento preso/acabou.
- * * [ ACESSÓRIOS ]
- * COLETOR_ON/OFF  : Abre/Fecha servo do coletor de purga.
- * * -----------------------------------------------------------
- * MAPA DE ESTACIONAMENTO (IDLE):
+ * SERIAL COMMANDS (Sent via Klipper/Terminal):
+ * * [ SELECTION ]
+ * T0 - T7         : Selects tool and moves physical selector.
+ * HOME            : Calibrates selector against the physical hard-stop (Channel 0).
+ * IDLE            : Parks selector between lobes (relieves filament tension).
+ * * [ MOVEMENT ]
+ * LOAD <mm>       : Loads up to the nozzle sensor.
+ * LOAD <mm> EX <n>: Loads up to the sensor + <n> extra mm.
+ * UNLOAD <mm>     : Retracts filament by the defined distance.
+ * STOP_LOAD       : Immediate interruption of the load motor.
+ * * [ CALIBRATION AND TESTING ]
+ * PRESSURE <val>  : Selector offset (+/- steps) for spring tension adjustment.
+ * SPEED <val>     : Extrusion speed (Lower = Faster).
+ * STRESS          : Automatic cycle of all combinations (T0-T7).
+ * STATUS          : Diagnostic report for sensors, tools, and offsets.
+ * * [ BUFFER AUTOMATION ]
+ * BUFFER_ON/OFF   : Enables/Disables automatic reloading (Autopilot).
+ * PROTECAO_ON/OFF : Enables/Disables pause on jammed or run-out filament.
+ * * [ ACCESSORIES ]
+ * COLETOR_ON/OFF  : Opens/Closes the purge collector servo.
+ * -----------------------------------------------------------
+ * PARKING MAP (IDLE):
  * T0/T4 -> Pos 2 | T1/T5 -> Pos 3 | T2/T6 -> Pos 0 | T3/T7 -> Pos 1
  */
 #include <Servo.h>
 #include <EEPROM.h>
 
 // =================================================================================
-// MAPEAMENTO DE PINOS - CNC SHIELD (MOTORES)
+// PIN MAPPING - CNC SHIELD (MOTORS)
 // =================================================================================
-// --- Eixo Z: Motor da Extrusora 1 (T0, T1, T2, T3) ---
-#define extEnable             8   // Z_ENABLE (Geralmente comum)
+// --- Z-Axis: Extruder Motor 1 (T0, T1, T2, T3) ---
+#define extEnable             8   // Z_ENABLE (Usually common)
 #define extStep               4   // Z_STEP
 #define extDir                7   // Z_DIR
 
-// --- Eixo Y: Motor da Extrusora 2 (T4, T5, T6, T7) ---
+// --- Y-Axis: Extruder Motor 2 (T4, T5, T6, T7) ---
 #define ext2Enable            8   // Y_ENABLE
 #define ext2Step              3   // Y_STEP
 #define ext2Dir               6   // Y_DIR
 
-// --- Eixo X: Motor do Seletor (Tool Selector) ---
+// --- X-Axis: Selector Motor (Tool Selector) ---
 #define selEnable             8   // X_ENABLE
 #define selStep               2   // X_STEP
 #define selDir                5   // X_DIR
 
 // =================================================================================
-// PERIFÉRICOS E SENSORES
+// PERIPHERALS AND SENSORS
 // =================================================================================
-#define SERVO_PIN             11  // Servo do coletor/cortador
-#define FILAMENT_SENSOR_PIN   A3  // Sensor no Hotend (Não utilizado)
+#define SERVO_PIN             11  // Collector/cutter servo
+#define FILAMENT_SENSOR_PIN   A3  // Hotend sensor (Not used)
 
-// --- Sistema de Buffer (Microswitches NC) ---
-#define BUFFER_EMPTY_PIN      A1  // Pino ABORT - Sensor de Buffer Vazio
-#define BUFFER_FULL_PIN       A0  // Pino HOLD - Sensor de Buffer Cheio
-
-// =================================================================================
-// CONFIGURAÇÕES DE TEMPO E MEMÓRIA (EEPROM)
-// =================================================================================
-#define BUFFER_CHECK_INTERVAL 200     // Intervalo de checagem em ms
-#define IDLE_TIMEOUT          300000  // Inatividade para Idle (5 min)
-
-// --- Endereços de Memória Permanente ---
-#define EEPROM_EXTRUDER_ADDR  0   // Salva a ferramenta atual (T0-T7)
-#define EEPROM_PRESSURE_ADDR  4   // Salva o offset de pressão do seletor
+// --- Buffer System (NC Microswitches) ---
+#define BUFFER_EMPTY_PIN      A1  // ABORT Pin - Buffer Empty Sensor
+#define BUFFER_FULL_PIN       A0  // HOLD Pin - Buffer Full Sensor
 
 // =================================================================================
-// CONFIGURAÇÕES DE HARDWARE E CALIBRAÇÃO
+// TIME AND MEMORY SETTINGS (EEPROM)
 // =================================================================================
-const float STEPS_PER_MM      = 151.0;  // Passos por mm (Motores Z e Y)
-const int stepsPerRev         = 200;    // Passos nativos do motor
-const int microSteps          = 16;     // Microstepping configurado no driver
-const int defaultBackoff      = 5;      // Recuo pós-homing para alinhar Canal 0 (5mm)
+#define BUFFER_CHECK_INTERVAL 200     // Check interval in ms
+#define IDLE_TIMEOUT          300000  // Inactivity timeout for Idle (5 mins)
 
-// --- Tempos e Delays (Velocidade) ---
-int speedDelay                = 170;    // Velocidade das extrusoras (Z e Y)
-const int selectorSpeedDelay  = 60;     // Velocidade do seletor (X)
+// --- Permanent Memory Addresses ---
+#define EEPROM_EXTRUDER_ADDR  0   // Saves current active tool (T0-T7)
+#define EEPROM_PRESSURE_ADDR  4   // Saves selector pressure offset
 
-// --- Definições de Direção ---
+// =================================================================================
+// HARDWARE AND CALIBRATION SETTINGS
+// =================================================================================
+const float STEPS_PER_MM      = 151.0;  // Steps per mm (Z and Y motors)
+const int stepsPerRev         = 200;    // Native motor steps
+const int microSteps          = 16;     // Configured driver microstepping
+const int defaultBackoff      = 5;      // Backoff distance after homing to align Channel 0 (5mm)
+
+// --- Timings and Delays (Speed) ---
+int speedDelay                = 170;    // Extruder speed delay (Z and Y)
+const int selectorSpeedDelay  = 60;     // Selector speed delay (X)
+
+// --- Direction Definitions ---
 const int counterclockwise    = HIGH;
 const int clockwise           = !counterclockwise;
 
 // =================================================================================
-// ESTADOS DO SISTEMA E FERRAMENTAS (T0-T7)
+// SYSTEM AND TOOL STATES (T0-T7)
 // =================================================================================
-int currentExtruder           = -1;     // Ferramenta ativa (posição física)
+int currentExtruder           = -1;     // Active tool (physical position)
 
-int lastExtruder              = -1;     // Última usada (define motor Z ou Y)
+int lastExtruder              = -1;     // Last used tool (determines Z or Y motor)
 
-int currentPhysPos            = 0;      // Posição física atual (0–3)
-int selectorPressureOffset    = 0;      // Offset global em steps para pressão
+int currentPhysPos            = 0;      // Current physical position (0–3)
+int selectorPressureOffset    = 0;      // Global pressure offset in steps
 
-// --- Flags de Controle e Lógica ---
-bool usarProtecaoFila         = true;   // Erro se filamento der nó ou acabar
-bool bufferAtivo              = true;   // Controle de carga automática do buffer
-bool isInIdleMode             = false;  // Indica se o seletor está em descanso
-bool sensorRemoteStop         = false;  // Controle de parada via Serial (STOP_LOAD)
+// --- Control and Logic Flags ---
+bool usarProtecaoFila         = true;   // Trigger error if filament tangles or runs out
+bool bufferAtivo              = true;   // Automatic buffer loading control
+bool isInIdleMode             = false;  // Indicates if the selector is currently resting
+bool sensorRemoteStop         = false;  // Remote stop control via Serial (STOP_LOAD)
 
 // =================================================================================
-// CONTROLE DO SERVO (COLETOR DE PURGA)
+// SERVO CONTROL (PURGE COLLECTOR)
 // =================================================================================
 Servo filamentCutter;
 int cutterPos                 = 0;
 bool reverseServo             = true;
 
-const int COLETOR_STOP        = 1500;   // Servo parado (Ponto morto)
-const int COLETOR_OPEN_SPEED  = 1300;   // Rotação para abrir
-const int COLETOR_CLOSE_SPEED = 1700;   // Rotação para fechar
-const int COLETOR_OPEN_TIME   = 300;    // Tempo para atingir abertura
-const int COLETOR_CLOSE_TIME  = 180;    // Tempo para atingir fechamento
+const int COLETOR_STOP        = 1500;   // Stopped servo (Dead center)
+const int COLETOR_OPEN_SPEED  = 1300;   // Rotation speed to open
+const int COLETOR_CLOSE_SPEED = 1700;   // Rotation speed to close
+const int COLETOR_OPEN_TIME   = 300;    // Time required to reach fully open
+const int COLETOR_CLOSE_TIME  = 180;    // Time required to reach fully closed
 
 // =================================================================================
-// SENSORES, BUFFER E TIMERS
+// SENSORS, BUFFER, AND TIMERS
 // =================================================================================
 unsigned long lastBufferCheck    = 0;
-unsigned long lastBufferActivity = 0;   // Timestamp da última movimentação
-bool lastBufferEmptyState        = false; // Memória do sensor de buffer vazio
-bool lastBufferFullState         = false; // Memória do sensor de buffer cheio
+unsigned long lastBufferActivity = 0;   // Timestamp of the last physical action
+bool lastBufferEmptyState        = false; // State memory for buffer empty sensor
+bool lastBufferFullState         = false; // State memory for buffer full sensor
 
 // =================================================================================
-// COMUNICAÇÃO E SISTEMA
+// COMMUNICATION AND SYSTEM
 // =================================================================================
-String serialBuffer           = "";     // Buffer de entrada do Klipper
-bool commandReceived          = false;  // Flag de comando completo
-int loaderMode                = 1;      // Modo automático (Carregar/Descarregar)
+String serialBuffer           = "";     // Klipper serial input buffer
+bool commandReceived          = false;  // Full command block received flag
+int loaderMode                = 1;      // Automatic mode (Load/Unload)
 
 
 // =================================================================================
-// CÁLCULOS DE DISTÂNCIA
+// DISTANCE CALCULATIONS
 // =================================================================================
-long distance                 = 10;     // Valor base para rotações
+long distance                 = 10;     // Base rotation distance value
 long unloadDistance           = (long)stepsPerRev * microSteps * distance;
-long loadDistance             = (long)unloadDistance * 1.1; // +10% de margem
-// --- GESTÃO DE MEMÓRIA (EEPROM) ---
+long loadDistance             = (long)unloadDistance * 1.1; // +10% safety margin
+
+// --- MEMORY MANAGEMENT (EEPROM) ---
 void savePressureOffset(int offset) { 
-  EEPROM.put(EEPROM_PRESSURE_ADDR, offset);  // update() só grava se o valor for diferente
+  EEPROM.put(EEPROM_PRESSURE_ADDR, offset);  // put() only writes if value differs from current
 }
 void loadPressureOffset() {
   int saved;
   EEPROM.get(EEPROM_PRESSURE_ADDR, saved);
-  // Se valor for maior que 150 ou lixo (EEPROM limpa retorna -1 ou 255), reseta para 0
+  // If the value is above 150 or contains garbage (blank EEPROM returns -1 or 255), reset to 0
   selectorPressureOffset = (abs(saved) > 150) ? 0 : saved;
 }
 void saveCurrentExtruder(int extruder) { 
@@ -148,33 +149,36 @@ void saveCurrentExtruder(int extruder) {
 }
 int loadSavedExtruder() { 
   int saved = EEPROM.read(EEPROM_EXTRUDER_ADDR);
-  // Retorna a ferramenta (0-7) ou -1 se o valor salvo for inválido/vazio
+  // Returns tool index (0-7) or -1 if the saved value is invalid/blank
   return (saved > 0 && saved <= 8) ? (saved - 1) : -1;
 }
 
 void setup() {
   Serial.begin(9600);
-  Serial.println(F("STARTUP: BUSY")); // Notifica o Klipper
+  Serial.println(F("STARTUP: BUSY")); // Notify Klipper
   const int pins[] = {extEnable, extStep, extDir, ext2Enable, ext2Step, ext2Dir, selEnable, selStep, selDir};
   for (int i = 0; i < 9; i++) pinMode(pins[i], OUTPUT);
 
   digitalWrite(extEnable, HIGH);
   digitalWrite(ext2Enable, HIGH);
   digitalWrite(selEnable, LOW);
-  // --- CONFIGURAÇÃO DE PINOS (SENSORES) ---
+  
+  // --- PIN SETTINGS (SENSORS) ---
   pinMode(FILAMENT_SENSOR_PIN, INPUT_PULLUP);
   pinMode(BUFFER_EMPTY_PIN, INPUT_PULLUP);
   pinMode(BUFFER_FULL_PIN, INPUT_PULLUP);
   filamentCutter.attach(SERVO_PIN);
   filamentCutter.writeMicroseconds(COLETOR_STOP);
-  loadPressureOffset(); // Carrega o ajuste de mola da EEPROM
-  homeSelector();   // O homeSelector agora calibra, lê a EEPROM e já move para a ferramenta correta.
-  // --- INICIALIZAÇÃO DE ESTADOS DO BUFFER ---
+  loadPressureOffset(); // Load spring tension value from EEPROM
+  homeSelector();   // homeSelector now calibrates, reads EEPROM, and shifts to the correct active tool.
+  
+  // --- INITIALIZE BUFFER STATES ---
   lastBufferEmptyState = (digitalRead(BUFFER_EMPTY_PIN) == HIGH);
   lastBufferFullState = (digitalRead(BUFFER_FULL_PIN) == HIGH);
   lastBufferActivity = millis();
   isInIdleMode = false;
-  // --- INTERFACE DE USUÁRIO ---
+  
+  // --- USER INTERFACE OUTLINE ---
   Serial.println(F("\n--- 3DCHAMELEON TURBO 8X READY ---"));
   Serial.println(F("[SEL] T0-T7, HOME, IDLE, STRESS"));
   Serial.println(F("[EXT] LOAD, UNLOAD, STOP_LOAD"));
@@ -185,7 +189,7 @@ void setup() {
 }
 
 void loop() {
-  while (Serial.available() > 0) { // --- LEITURA SERIAL ---
+  while (Serial.available() > 0) { // --- SERIAL INTERACTION ---
     char c = Serial.read();
     if (c == '\n' || c == '\r') {
       if (serialBuffer.length() > 0) commandReceived = true;
@@ -193,10 +197,10 @@ void loop() {
     }
     serialBuffer += c;
   }
-  // --- EXECUÇÃO DE COMANDOS ---
+  // --- COMMAND INTERPRETATION ---
   if (commandReceived) {
     Serial.print(F("CMD: ")); Serial.println(serialBuffer);
-    Serial.println(F("BUSY")); // Avisa o Klipper que está processando
+    Serial.println(F("BUSY")); // Inform Klipper processing has started
     lastBufferActivity = millis();
     if (isInIdleMode) {
       isInIdleMode = false;
@@ -205,42 +209,42 @@ void loop() {
     processSerialCommand(serialBuffer);
     serialBuffer = "";
     commandReceived = false;
-    Serial.println(F("READY")); // Pronto para o próximo
+    Serial.println(F("READY")); // Awaiting next instruction
   }
-  // --- MONITORAMENTO AUTOMÁTICO ---
-  monitorBufferStateChanges(); // Notifica mudanças nos sensores
+  // --- AUTOMATIC SYSTEM MONITORING ---
+  monitorBufferStateChanges(); // Inform host of hardware sensor state changes
   unsigned long currentTime = millis();
   if (currentTime - lastBufferCheck >= BUFFER_CHECK_INTERVAL) {
-    maintainBuffer(); // Gerencia carga automática (Z ou Y)
+    maintainBuffer(); // Handles automated feeding (Z or Y motor)
     lastBufferCheck = currentTime;
   }
-  checkIdleTimeout(currentTime); // Entra em IDLE se ocioso
-  delay(5); // Estabilidade do clock
+  checkIdleTimeout(currentTime); // Enters low-power/idle mode if inactive
+  delay(5); // Stabilization loop delay
 }
 
-void coletorOn() { // --- FUNÇÕES DO COLETOR DE PURGA (Servo 360°) ---
-  filamentCutter.writeMicroseconds(COLETOR_OPEN_SPEED); // Aciona motor
-  delay(COLETOR_OPEN_TIME);                             // Aguarda curso
-  filamentCutter.writeMicroseconds(COLETOR_STOP);       // Para
+void coletorOn() { // --- PURGE COLLECTOR CONTROLS (360° Continuous Servo) ---
+  filamentCutter.writeMicroseconds(COLETOR_OPEN_SPEED); // Engage rotation
+  delay(COLETOR_OPEN_TIME);                             // Run duration
+  filamentCutter.writeMicroseconds(COLETOR_STOP);       // Brake
   Serial.println(F("COL: OPEN_OK"));
 }
 void coletorOff() {
-  filamentCutter.writeMicroseconds(COLETOR_CLOSE_SPEED); // Aciona motor inverso
-  delay(COLETOR_CLOSE_TIME);                             // Aguarda curso
-  filamentCutter.writeMicroseconds(COLETOR_STOP);        // Para
+  filamentCutter.writeMicroseconds(COLETOR_CLOSE_SPEED); // Engage reverse rotation
+  delay(COLETOR_CLOSE_TIME);                             // Run duration
+  filamentCutter.writeMicroseconds(COLETOR_STOP);        // Brake
   Serial.println(F("COL: CLOSE_OK"));
 }
 
-void monitorBufferStateChanges() { // --- MONITORAMENTO DOS SENSORES (A0/A1) --- BUFFER
+void monitorBufferStateChanges() { // --- ANALYZE SENSOR PINOUT DATA (A0/A1) --- BUFFER
   bool currentEmpty = (digitalRead(BUFFER_EMPTY_PIN) == HIGH);
   bool currentFull  = (digitalRead(BUFFER_FULL_PIN) == HIGH);
-  if (currentEmpty != lastBufferEmptyState) {  // Detecta mudança no Vazio (A1)
+  if (currentEmpty != lastBufferEmptyState) {  // Monitors change on Empty sensor (A1)
     lastBufferEmptyState = currentEmpty;
     lastBufferActivity = millis();
     isInIdleMode = false;
     Serial.print(F("BUF_EMPTY: ")); Serial.println(currentEmpty);
   }
-  if (currentFull != lastBufferFullState) { // Detecta mudança no Cheio (A0)
+  if (currentFull != lastBufferFullState) { // Monitors change on Full sensor (A0)
     lastBufferFullState = currentFull;
     lastBufferActivity = millis();
     isInIdleMode = false;
@@ -248,20 +252,18 @@ void monitorBufferStateChanges() { // --- MONITORAMENTO DOS SENSORES (A0/A1) ---
   }
 }
 
-void maintainBuffer() { // --- PILOTO AUTOMÁTICO DE RECARGA ---
+void maintainBuffer() { // --- AUTOMATED BUFFER AUTOPILOT ---
   if (!bufferAtivo) return;
   bool bufferEmpty = (digitalRead(BUFFER_EMPTY_PIN) == LOW);
   unsigned long now = millis();
   if (bufferEmpty) {
-    
-    if (!lastBufferEmptyState) {  // Só inicia se detectou a borda de queda (vazio agora, mas estava cheio antes)
+    if (!lastBufferEmptyState) {  // Executes only on falling edge detection (now empty, but was verified full previously)
       Serial.println(F("BUFFER: RECHARGING"));
       lastBufferActivity = now;
-      // Sincroniza posição física se necessário
+      // Synchronize the selector position if required
       if ((currentExtruder % 4) != (lastExtruder % 4)) {
         gotoExtruder(currentPhysPos, lastExtruder % 4);
         currentPhysPos = lastExtruder % 4;
-
       }
       feedBuffer(); 
     }
@@ -269,13 +271,13 @@ void maintainBuffer() { // --- PILOTO AUTOMÁTICO DE RECARGA ---
   checkIdleTimeout(now);
 }
 
-// --- GESTÃO DE REPOUSO (IDLE) ---
+// --- IDLE SLEEP MANAGEMENT ---
 void checkIdleTimeout(unsigned long currentTime) {
   if (isInIdleMode) return;
-  if ((currentTime - lastBufferActivity) >= IDLE_TIMEOUT) { // Se ocioso por mais de IDLE_TIMEOUT (5 min)
+  if ((currentTime - lastBufferActivity) >= IDLE_TIMEOUT) { // Active only if inactive past IDLE_TIMEOUT threshold (5 mins)
     Serial.println(F("IDLE: STARTING"));
-    int idlePos = (lastExtruder + 2) % 4;  // Lógica 8 cores: Estaciona no vão entre ressaltos (last + 2)
-    bool filamentInHotend = (digitalRead(FILAMENT_SENSOR_PIN) == HIGH);   // Pré-carga de segurança antes de relaxar o seletor
+    int idlePos = (lastExtruder + 2) % 4;  // 8-color scheme logic: Park between selector lobes (last + 2)
+    bool filamentInHotend = (digitalRead(FILAMENT_SENSOR_PIN) == HIGH);   // Pre-check safety lock before dropping tension
     bool bufferFull       = (digitalRead(BUFFER_FULL_PIN) == HIGH);
     if (filamentInHotend && !bufferFull) {
       if (currentExtruder != lastExtruder) {
@@ -284,13 +286,13 @@ void checkIdleTimeout(unsigned long currentTime) {
       }
       feedBuffer();
     }
-    gotoExtruder(currentPhysPos, idlePos);  // Move seletor para posição física de descanso (0-3)
+    gotoExtruder(currentPhysPos, idlePos);  // Guide physical selector to low-tension rest state (0-3)
     currentPhysPos = idlePos; 
     isInIdleMode = true;
     Serial.println(F("IDLE: SLEEPING"));
   }
 }
-// --- ALIMENTAÇÃO DO BUFFER (MOTORES Z/Y) ---
+// --- FEED BUFFER VIA ACTUATOR (Z/Y MOTORS) ---
 void feedBuffer() {
   int stepPin     = (lastExtruder < 4) ? extStep   : ext2Step;
   int dirPin      = (lastExtruder < 4) ? extDir    : ext2Dir;
@@ -299,7 +301,7 @@ void feedBuffer() {
   digitalWrite(enPin, LOW); 
   digitalWrite(dirPin, direction);
   long stepsFed = 0;
-  long maxSteps = (long)(400.0 * STEPS_PER_MM); // Limite 400mm
+  long maxSteps = (long)(400.0 * STEPS_PER_MM); // 400mm path limit
   Serial.println(F("FEED: BUSY"));
   while (digitalRead(BUFFER_FULL_PIN) == HIGH) {
     if (usarProtecaoFila && (stepsFed > maxSteps)) {
@@ -313,28 +315,28 @@ void feedBuffer() {
     delayMicroseconds(speedDelay);
     stepsFed++;
   }
-  digitalWrite(enPin, HIGH); // Desativa motor para economizar energia
+  digitalWrite(enPin, HIGH); // Kill motor line feed power to manage thermals
   Serial.print(F("FEED: OK (")); 
   Serial.print((float)stepsFed / STEPS_PER_MM); 
   Serial.println(F("mm)"));
 }
 void printHelp() {
-  Serial.println(F("\n========= MANUAL DE COMANDOS 3DCHAMELEON ========="));
-  Serial.println(F("T0-T7          : Seleciona ferramenta e move seletor"));
-  Serial.println(F("HOME           : Calibra seletor no batente fisico"));
-  Serial.println(F("IDLE           : Estaciona entre canais p/ aliviar fio"));
-  Serial.println(F("STRESS         : Executa ciclo de testes automatico"));
-  Serial.println(F("STATUS         : Diagnostico de sensores e variaveis"));
+  Serial.println(F("\n========= 3DCHAMELEON COMMAND MANUAL ========="));
+  Serial.println(F("T0-T7          : Selects tool and drives physical selector"));
+  Serial.println(F("HOME           : Calibrates selector against physical stop"));
+  Serial.println(F("IDLE           : Parks between paths to relieve tension"));
+  Serial.println(F("STRESS         : Loops automated diagnostic sequence"));
+  Serial.println(F("STATUS         : Outputs values and hardware metrics"));
   Serial.println(F("--------------------------------------------------"));
-  Serial.println(F("LOAD 100 EX 5  : Carrega 100mm (ou ate sensor) + 5mm"));
-  Serial.println(F("UNLOAD 120     : Recua 120mm de filamento"));
-  Serial.println(F("STOP_LOAD      : Para o motor de carga imediatamente"));
+  Serial.println(F("LOAD 100 EX 5  : Loads 100mm (or to sensor) + 5mm overshoot"));
+  Serial.println(F("UNLOAD 120     : Extrudes/Retracts 120mm of filament"));
+  Serial.println(F("STOP_LOAD      : Kills line feeding actuator immediately"));
   Serial.println(F("--------------------------------------------------"));
-  Serial.println(F("PRESSURE -20   : Ajusta o aperto do seletor (steps)"));
-  Serial.println(F("SPEED 150      : Define velocidade (menor = +rapido)"));
-  Serial.println(F("BUFFER_ON/OFF  : Ativa/Desativa recarga automatica"));
-  Serial.println(F("PROTECAO_ON/OFF: Ativa/Desativa pausa se o fio prender"));
-  Serial.println(F("COLETOR_ON/OFF : Abre/Fecha servo do cortador"));
+  Serial.println(F("PRESSURE -20   : Modulates physical spring tension (steps)"));
+  Serial.println(F("SPEED 150      : Designates driver speed delay (lower = faster)"));
+  Serial.println(F("BUFFER_ON/OFF  : Toggles automatic line top-offs"));
+  Serial.println(F("PROTECAO_ON/OFF: Toggles run-out/tangle pause parameters"));
+  Serial.println(F("COLETOR_ON/OFF : Opens/Closes the cutter unit servo loop"));
   Serial.println(F("==================================================\n"));
 }
 //---------------------------------------------------------------------------------------------------
@@ -373,7 +375,7 @@ void processSerialCommand(String command) {
   if (command == F("PROTECAO_OFF")) { usarProtecaoFila = false; Serial.println(F("PROT: 0")); return; }
   if (command == F("BUFFER_ON"))   { bufferAtivo = true;  Serial.println(F("BUF: 1"));  return; }
   if (command == F("BUFFER_OFF"))  { bufferAtivo = false; Serial.println(F("BUF: 0"));  return; }
-  if (command.startsWith(F("T"))) {  // --- MOVIMENTAÇÃO (T0-T7) ---
+  if (command.startsWith(F("T"))) {  // --- ACTIVE TRACKING (T0-T7) ---
     int tool = command.substring(1).toInt();
     if (tool >= 0 && tool <= 7) { 
       selectTool(tool); 
@@ -381,7 +383,7 @@ void processSerialCommand(String command) {
     } else Serial.println(F("ERROR: T_RANGE"));
     return;
   }
-  if (command.startsWith(F("LOAD"))) {  // --- CARGA E DESCARGA ---
+  if (command.startsWith(F("LOAD"))) {  // --- LOAD & UNLOAD SEQUENCES ---
     float d = 0, e = 0;
     int ex = command.indexOf(F("EX"));
     if (ex > 4) d = command.substring(5, ex).toFloat();
@@ -401,7 +403,7 @@ void processSerialCommand(String command) {
     else Serial.println(F("ERROR: UNLOAD_PARAMS"));
     return;
   }
-  // --- SISTEMA ---
+  // --- SUB-SYSTEM MANAGEMENT ---
   if (command == F("HOME"))         { homeSelector(); Serial.println(F("HOME: OK")); return; }
   if (command == F("IDLE"))         { moveToIdle();   Serial.println(F("IDLE: OK")); return; }
   if (command == F("COLETOR_ON"))   { coletorOn();    return; }
@@ -410,23 +412,18 @@ void processSerialCommand(String command) {
   Serial.println(F("ERROR: UNKNOWN_CMD"));
 }
 
-
-
-
-
 //---------------------------------------------------------------------------------------------------
-
 
 void stressTest() {
   Serial.println(F("STRESS_TEST: START"));
   
-  // Sequência estratégica para validar saltos e trocas de motor
+  // Tactical index mapping sequence validating tool selection boundaries and parity changes
   int seq[] = {
-    0, 1, 0, 2, 0, 3,         // Motor Z (0-3)
-    4, 5, 4, 6, 4, 7,         // Motor Y (4-7)
-    0, 4, 1, 5, 2, 6, 3, 7,   // Troca de motor (paridade)
-    3, 0, 7, 4,               // Retornos longos
-    0, 7, 3, 4                // Cruzamentos extremos
+    0, 1, 0, 2, 0, 3,         // Z Motor tracking (0-3)
+    4, 5, 4, 6, 4, 7,         // Y Motor tracking (4-7)
+    0, 4, 1, 5, 2, 6, 3, 7,   // Motor handoff transitions (parity validation)
+    3, 0, 7, 4,               // Long travel physical movements
+    0, 7, 3, 4                // Boundary path crossings
   };
   int total = sizeof(seq) / sizeof(seq[0]);
   for (int i = 0; i < total; i++) {
@@ -443,10 +440,7 @@ void stressTest() {
   selectTool(0);
 }
 
-
-
-
-void selectTool(int toolNumber) { // --- SELEÇÃO DE FERRAMENTA (T0-T7) ---
+void selectTool(int toolNumber) { // --- TOOL ASSIGNMENT & SELECTION (T0-T7) ---
   int fromPos = (currentExtruder >= 0) ? (currentExtruder % 4) : 0;
   int targetPos = toolNumber % 4;
   gotoExtruder(fromPos, targetPos);
@@ -456,7 +450,7 @@ void selectTool(int toolNumber) { // --- SELEÇÃO DE FERRAMENTA (T0-T7) ---
   saveCurrentExtruder(currentExtruder);
   Serial.print(F("T: OK ")); Serial.println(toolNumber);
 }
-void moveToIdle() { // --- MODO DE DESCANSO (IDLE) ---
+void moveToIdle() { // --- ENGAGE LOW POWER POSITION (IDLE) ---
   if (isInIdleMode) return;
   int idlePos = (lastExtruder + 2) % 4; 
   int physNow = currentExtruder % 4;
@@ -469,7 +463,7 @@ void moveToIdle() { // --- MODO DE DESCANSO (IDLE) ---
     Serial.println(F("IDLE: OK"));
   }
 }
-long loadUntilSensor(int tool, bool dir, float dist_mm, float extra_mm) { // --- CARGA COM INTERRUPÇÃO REMOTA (STOP_LOAD) ---
+long loadUntilSensor(int tool, bool dir, float dist_mm, float extra_mm) { // --- FEED WITH SERIAL INTERRUPT FAULT PROTECTION (STOP_LOAD) ---
   sensorRemoteStop = false;
   int stepPin = (tool < 4) ? extStep   : ext2Step;
   int dirPin  = (tool < 4) ? extDir    : ext2Dir;
@@ -497,9 +491,9 @@ long loadUntilSensor(int tool, bool dir, float dist_mm, float extra_mm) { // ---
     }
     if (sensorRemoteStop) break;
     int wait = maxWait;
-    if (steps < ramp) { // Aceleração
+    if (steps < ramp) { // Acceleration curve
       wait = minWait - (int)((minWait - maxWait) * ((float)steps / ramp));
-    } else if (decelStart > 0 && steps > decelStart) { // Desaceleração
+    } else if (decelStart > 0 && steps > decelStart) { // Deceleration curve
       wait = maxWait + (int)((minWait - maxWait) * ((float)(steps - decelStart) / ramp));
     }
     digitalWrite(stepPin, HIGH);
@@ -532,14 +526,14 @@ long loadUntilSensor(int tool, bool dir, float dist_mm, float extra_mm) { // ---
   return steps;
 }
 
-void executeLoadUnload(int tool, bool isLoad, float dist, float extra) { // --- CARGA E DESCARGA (8 CORES) ---
+void executeLoadUnload(int tool, bool isLoad, float dist, float extra) { // --- ENGAGE EXTRUSION LOGIC (8 COLORS) ---
   Serial.print(isLoad ? F("CMD_LOAD: T") : F("CMD_UNLOAD: T"));
   Serial.print(tool); Serial.println(F(" BUSY"));
   if (currentExtruder != tool) {
     gotoExtruder(currentExtruder % 4, tool % 4);
     currentExtruder = tool;
   }
-  bool dir = (tool % 4 < 2) ? clockwise : counterclockwise;  // LOAD: T0,T1 (CW) | T2,T3 (CCW) --- UNLOAD: Inverte tudo
+  bool dir = (tool % 4 < 2) ? clockwise : counterclockwise;  // LOAD: T0,T1 (CW) | T2,T3 (CCW) --- UNLOAD: Reverses logic parameters
   if (!isLoad) dir = !dir;
   if (isLoad) {
     loadUntilSensor(tool, dir, dist, extra);
@@ -551,30 +545,28 @@ void executeLoadUnload(int tool, bool isLoad, float dist, float extra) { // --- 
   saveCurrentExtruder(currentExtruder);
 }
 
-
-// --- MOVIMENTAÇÃO DO SELETOR (EIXO X) ---
+// --- SHIFT PHYSICAL SELECTOR POSITION (X AXIS) ---
 void gotoExtruder(int from, int to) {
   int physFrom = from % 4;
   int physTo = to % 4;
-  if (selectorPressureOffset != 0) { // 1. ZERAR OFFSET (VOLTA AO CENTRO)
+  if (selectorPressureOffset != 0) { // 1. RESET RUNNING PRESSURE COMPENSATIONS (CENTER ALIGNMENT)
     rotateSelector(selectorPressureOffset > 0, abs(selectorPressureOffset));
     delay(20); 
   }
   if (physFrom == physTo) return;
-  int diff = physTo - physFrom;  // 2. CÁLCULO DE MOVIMENTO
+  int diff = physTo - physFrom;  // 2. DISPLACEMENT CALCULATION
   bool dir = (diff > 0) ? counterclockwise : clockwise;
-  long stepsPerPos = (stepsPerRev * microSteps) / 4; // 800 steps por posição (1/4 de volta)
+  long stepsPerPos = (stepsPerRev * microSteps) / 4; // 800 steps per node increment (1/4 turn layout)
   long totalSteps = (long)abs(diff) * stepsPerPos;
-  totalSteps += selectorPressureOffset;  // 3. APLICAÇÃO DO OFFSET DE PRESSÃO
+  totalSteps += selectorPressureOffset;  // 3. RETRIEVE AND INJECT SPRING COMPENSATIONS
   Serial.print(F("SEL: ")); Serial.print(physFrom);
   Serial.print(F("->")); Serial.print(physTo);
   Serial.print(F(" [")); Serial.print(totalSteps); Serial.println(F(" steps]"));
   rotateSelector(dir, totalSteps);
-  isInIdleMode = false; // Se moveu, não está mais em repouso
+  isInIdleMode = false; // System active; drop resting flags
 }
 
-
-void rotateExtruder(int tool, bool dir, long steps) { // --- MOVIMENTAÇÃO DOS EXTRUSORES (Z ou Y) ---
+void rotateExtruder(int tool, bool dir, long steps) { // --- DRIVE EXTRUDER STAGE ARRAYS (Z or Y MOTORS) ---
   if (steps <= 0) return; 
   int stepPin = (tool < 4) ? extStep   : ext2Step;
   int dirPin  = (tool < 4) ? extDir    : ext2Dir;
@@ -583,33 +575,31 @@ void rotateExtruder(int tool, bool dir, long steps) { // --- MOVIMENTAÇÃO DOS 
   digitalWrite(dirPin, dir);
   const int minWait = speedDelay;
   const int maxWait = speedDelay / 6;
-  if ((float)steps / STEPS_PER_MM < 100.0) { // Decisão de rampa baseada na distância (Limite 100mm)
+  if ((float)steps / STEPS_PER_MM < 100.0) { // Acceleration planning bypass for short travels (100mm threshold limit)
     for (long x = 0; x < steps; x++) {
       digitalWrite(stepPin, HIGH); delayMicroseconds(minWait);
       digitalWrite(stepPin, LOW);  delayMicroseconds(minWait);
     }
   } else {
-    long accelLimit = steps * 0.08; // Movimento longo: Rampa 8% / 82% / 10%
+    long accelLimit = steps * 0.08; // Long travel speed management: Curves set to 8% Accel / 82% Cruise / 10% Decel
     long decelLimit = steps * 0.90;
     for (long x = 0; x < steps; x++) {
       int wait = maxWait;
-      if (x < accelLimit) { // Acelera
+      if (x < accelLimit) { // Accel curve ramping
         wait = minWait - (int)((minWait - maxWait) * ((float)x / accelLimit));
       } 
-      else if (x > decelLimit) { // Desacelera
+      else if (x > decelLimit) { // Decel curve ramping
         wait = maxWait + (int)((minWait - maxWait) * ((float)(x - decelLimit) / (steps - decelLimit)));
       }
       digitalWrite(stepPin, HIGH); delayMicroseconds(wait);
       digitalWrite(stepPin, LOW);  delayMicroseconds(wait);
     }
   }
-  digitalWrite(enPin, HIGH); // Sleep motor
+  digitalWrite(enPin, HIGH); // Sleep motor line to prevent heating issues
 }
 
-
-
-void rotateSelector(bool dir, int steps) { // --- MOVIMENTAÇÃO DO SELETOR (EIXO X) ---
-  digitalWrite(selEnable, LOW); // Mantém energizado/travado
+void rotateSelector(bool dir, int steps) { // --- ROTATE SELECTOR SYSTEM (X-AXIS ARDUINO STEP STAGE) ---
+  digitalWrite(selEnable, LOW); // Enforce holding current lock
   digitalWrite(selDir, dir);
   for (int x = 0; x < steps; x++) {
     digitalWrite(selStep, HIGH);
@@ -619,18 +609,18 @@ void rotateSelector(bool dir, int steps) { // --- MOVIMENTAÇÃO DO SELETOR (EIX
   }
 }
 
-void homeSelector() // --- HOMING DO SELETOR ---
+void homeSelector() // --- HOME SELECTOR AXIS STAGE RUN ---
 {
-  // 1. Move até o batente físico (sentido horário)
+  // 1. Move into mechanical boundary limit (Clockwise direction)
   rotateSelector(clockwise, (int)(stepsPerRev * microSteps * 1.3));
   delay(100);
-  // 2. Recua para o centro exato do canal 0
+  // 2. Step backward to pinpoint center alignment for channel 0
   rotateSelector(counterclockwise, defaultBackoff * microSteps);
   delay(50);
-  // 3. Estado físico REAL após homing
-  currentPhysPos = 0;        // posição física conhecida
-  isInIdleMode   = false;    // acabou de mover, não está em idle
-  int saved = loadSavedExtruder();  // 4. Restaura a última ferramenta válida salva
+  // 3. Establish absolute physical baseline location definitions
+  currentPhysPos = 0;        // Known physical location synced
+  isInIdleMode   = false;    // Status running; drop sleep tags
+  int saved = loadSavedExtruder();  // 4. Extract last confirmed active storage parameters from EEPROM
   if (saved < 0 || saved > 7) saved = 0;
 
   lastExtruder    = saved;
